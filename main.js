@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 // --- Scene & Camera Setup ---
 const scene = new THREE.Scene();
@@ -168,19 +167,27 @@ function createStudent(shirtColor) {
 function createTeacher() {
   const teacherGroup = new THREE.Group();
 
+  // Head pivot placeholder for animations
   const headPivot = new THREE.Group();
   headPivot.position.set(0, 2.0, 0);
   teacherGroup.add(headPivot);
 
-  const loader = new GLTFLoader();
-  loader.load('teacher.glb', (gltf) => {
-    const model = gltf.scene;
-    model.scale.set(1.5, 1.5, 1.5);
-    model.position.y = 0;
-    teacherGroup.add(model);
-  }, undefined, (error) => {
-    console.error('Error loading teacher.glb model:', error);
+  // Load the uploaded photo sprite (teacher.png)
+  const textureLoader = new THREE.TextureLoader();
+  const teacherTexture = textureLoader.load('teacher.png', undefined, undefined, (err) => {
+    console.error('Error loading teacher.png image sprite:', err);
   });
+
+  const spriteMat = new THREE.MeshBasicMaterial({ 
+    map: teacherTexture, 
+    transparent: true,
+    side: THREE.DoubleSide 
+  });
+
+  const planeGeo = new THREE.PlaneGeometry(2.2, 2.8);
+  const teacherMesh = new THREE.Mesh(planeGeo, spriteMat);
+  teacherMesh.position.y = 1.4;
+  teacherGroup.add(teacherMesh);
 
   return { group: teacherGroup, headPivot };
 }
@@ -417,7 +424,7 @@ const overlay = document.getElementById('overlay');
 const startBtn = document.getElementById('start-btn');
 startBtn.addEventListener('click', () => {
   if (strikes <= 0) {
-    strikes = 3; // Reset strikes on full game restart
+    strikes = 3;
   }
   isCutsceneActive = false;
   resetGame();
@@ -509,9 +516,9 @@ function triggerCam121Cutscene() {
   gameActive = false;
   controls.unlock();
 
-  strikes--; // Lose 1 strike out of 3
+  strikes--; // Lose 1 strike
 
-  // Teleport player temporarily into CAM 121 room coordinates
+  // Teleport player temporarily to CAM 121 isolation coordinates
   camera.position.set(-40, 1.7, -40);
   camera.lookAt(0, 1.7, -40);
 
@@ -520,12 +527,12 @@ function triggerCam121Cutscene() {
   if (strikes > 0) {
     document.getElementById('overlay-title').textContent = `BUSTED! Dragged to CAM 121 (${strikes} Strikes Left)`;
     document.getElementById('overlay-text').textContent = 
-      `The teacher dragged you into CAM 121 and started writing aggressively on the whiteboard! You have ${strikes} strikes left before permanent detention failure. Click below to sneak back out.`;
+      `The teacher caught you and dragged you into CAM 121 to write aggressively on the whiteboard! You have ${strikes} strikes left. Click below to sneak back out.`;
     startBtn.textContent = 'Sneak Back to Classroom';
   } else {
     document.getElementById('overlay-title').textContent = 'PERMANENT DETENTION! (Game Over)';
     document.getElementById('overlay-text').textContent = 
-      'You got caught 3 times! The teacher locked you in CAM 121 forever. Game over!';
+      'You got caught 3 times! The teacher locked you in CAM 121 permanently.';
     startBtn.textContent = 'Play Again';
   }
 }
@@ -551,7 +558,6 @@ function resetGame() {
 
   teacher.position.copy(teacherHome);
   teacher.rotation.set(0, 0, 0);
-  teacherHead.rotation.x = 0.45;
   teacherState = 'GRADING';
   stateTimer = 4.0;
   unlockProgress = 0;
@@ -606,7 +612,6 @@ function animate() {
     stateTimer -= delta;
     if (teacherState === 'GRADING') {
       visionCone.visible = false;
-      teacherHead.rotation.x = THREE.MathUtils.lerp(teacherHead.rotation.x, 0.5, delta * 5);
       teacher.position.lerp(teacherHome, delta * 2);
       teacher.lookAt(2.2, 0, 0);
       if (stateTimer <= 0) {
@@ -615,7 +620,6 @@ function animate() {
       }
     } else if (teacherState === 'WATCHING') {
       visionCone.visible = true;
-      teacherHead.rotation.x = THREE.MathUtils.lerp(teacherHead.rotation.x, -0.05, delta * 5);
       teacher.position.x = 2.2 + Math.sin(elapsed * 0.8) * 3.0;
       teacher.rotation.y = Math.sin(elapsed * 1.4) * 0.75;
       if (stateTimer <= 0) {
@@ -629,7 +633,6 @@ function animate() {
       teacher.position.lerp(whiteboardPos, delta * 3.0);
       teacher.lookAt(-1.5, 2.0, -roomLength / 2);
 
-      teacherHead.rotation.x = Math.sin(elapsed * 15) * 0.08 + 0.2; 
       teacher.rotation.y = Math.sin(elapsed * 20) * 0.05;
 
       if (stateTimer <= 0) {
