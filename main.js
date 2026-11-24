@@ -166,12 +166,10 @@ function createStudent(shirtColor) {
 
 function createTeacher() {
   const teacherGroup = new THREE.Group();
-
   const headPivot = new THREE.Group();
   headPivot.position.set(0, 2.0, 0);
   teacherGroup.add(headPivot);
 
-  // Load teacher.png sprite properly via TextureLoader
   const textureLoader = new THREE.TextureLoader();
   const teacherTexture = textureLoader.load('teacher.png', undefined, undefined, (err) => {
     console.error('Error loading teacher.png image sprite:', err);
@@ -332,7 +330,8 @@ document.addEventListener('keydown', (e) => {
   if (e.code === 'Space') {
     if (isSeated) {
       isSeated = false;
-      camera.position.set(currentDesk.seatPos.x + 1.35, 1.7, currentDesk.seatPos.z);
+      // Stand up slightly next to the desk so movement unblocks properly
+      camera.position.set(currentDesk.seatPos.x, 1.7, currentDesk.seatPos.z + 1.2);
     } else {
       const nearbyDesk = getNearbyDesk(2.3);
       if (nearbyDesk && !nearbyDesk.occupied) {
