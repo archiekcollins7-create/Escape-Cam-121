@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 // --- Scene & Camera Setup ---
 const scene = new THREE.Scene();
@@ -167,27 +168,21 @@ function createStudent(shirtColor) {
 function createTeacher() {
   const teacherGroup = new THREE.Group();
 
-  // Load 2D Teacher Image Sprite ('teacher.png')
-  const textureLoader = new THREE.TextureLoader();
-  const teacherTexture = textureLoader.load('teacher.png', undefined, undefined, (err) => {
-    console.log('Error loading teacher image. Using fallback color.');
-  });
-
-  const spriteMat = new THREE.MeshBasicMaterial({ 
-    map: teacherTexture, 
-    transparent: true,
-    side: THREE.DoubleSide 
-  });
-
-  const planeGeo = new THREE.PlaneGeometry(2.2, 2.8);
-  const teacherMesh = new THREE.Mesh(planeGeo, spriteMat);
-  teacherMesh.position.y = 1.4;
-  teacherGroup.add(teacherMesh);
-
   // Head pivot placeholder for AI look-up/down animations
   const headPivot = new THREE.Group();
   headPivot.position.set(0, 2.0, 0);
   teacherGroup.add(headPivot);
+
+  // Load 3D Teacher Model from Meshy ('teacher.glb')
+  const loader = new GLTFLoader();
+  loader.load('teacher.glb', (gltf) => {
+    const model = gltf.scene;
+    model.scale.set(1.5, 1.5, 1.5); // Adjust model scale if needed
+    model.position.y = 0;
+    teacherGroup.add(model);
+  }, undefined, (error) => {
+    console.error('Error loading teacher 3D model. Check filename teacher.glb in repo.', error);
+  });
 
   return { group: teacherGroup, headPivot };
 }
@@ -294,6 +289,7 @@ camera.position.copy(currentDesk.seatPos);
 
 let isSeated = true;
 let gameActive = false;
+let isCutsceneActive = false;
 let teacherState = 'GRADING';
 let stateTimer = 4.0;
 let distractionPos = null;
@@ -408,6 +404,7 @@ function showPrompt(msg) {
 const overlay = document.getElementById('overlay');
 const startBtn = document.getElementById('start-btn');
 startBtn.addEventListener('click', () => {
+  isCutsceneActive = false;
   resetGame();
   controls.lock();
 });
@@ -418,7 +415,7 @@ controls.addEventListener('lock', () => {
 });
 
 controls.addEventListener('unlock', () => {
-  if (gameActive) {
+  if (gameActive && !isCutsceneActive) {
     overlay.classList.remove('hidden');
     document.getElementById('overlay-title').textContent = 'Paused';
     startBtn.textContent = 'Resume';
@@ -471,6 +468,22 @@ function updateHUD() {
   if (inventory.key) items.push('Door Key');
   if (inventory.screwdriver) items.push('Screwdriver');
   document.getElementById('inv-list').textContent = items.join(' | ');
+}
+
+function triggerCam121Cutscene() {
+  if (isCutsceneActive) return;
+  isCutsceneActive = true;
+  gameActive = false;
+  controls.unlock();
+
+  camera.position.set(-40, 1.7, -40);
+  camera.lookAt(0, 1.7, -40);
+
+  overlay.classList.remove('hidden');
+  document.getElementById('overlay-title').textContent = 'BUSTED! Dragged to CAM 121';
+  document.getElementById('overlay-text').textContent = 
+    'The teacher caught you out of your seat and dragged you all alone into CAM 121 for detention isolation! Click below to sneak back out to your desk.';
+  startBtn.textContent = 'Sneak Back to Classroom';
 }
 
 function endGame(title, text) {
@@ -585,7 +598,7 @@ function animate() {
       const angle = teacherForward.angleTo(toPlayer);
 
       if (distance < 15.5 && angle < 0.42) {
-        endGame('Caught!', 'The teacher looked up and caught you out of your seat!');
+        triggerCam121Cutscene();
       }
     }
 
