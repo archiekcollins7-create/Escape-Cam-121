@@ -16,11 +16,15 @@
 </head>
 <body>
   <div id="hud">
-    <div id="status">Main Teacher: <span id="teacher-state">Grading Papers (Safe)</span></div>
+    <div id="status">Teacher: <span id="teacher-state">Looking Down (Safe)</span></div>
     <div id="seat-status">State: Seated (Press <b>SPACE</b> to Stand)</div>
-    <div id="controls">
-      <b>WASD</b>: Move | <b>Mouse</b>: Look | <b>T</b>: Throw Paper Distraction | <b>E</b>: Unlock Door
+    <div id="inventory">
+      <b>Inventory:</b> <span id="inv-list">Paper Balls (3)</span>
     </div>
+    <div id="controls">
+      <b>WASD</b>: Move | <b>SPACE</b>: Sit/Stand at Empty Desk | <b>F</b>: Open Drawer | <b>T</b>: Throw Paper | <b>E</b>: Escape
+    </div>
+    <div id="prompt-msg"></div>
     <div id="unlock-bar-container" class="hidden">
       <div id="unlock-bar"></div>
     </div>
@@ -31,8 +35,9 @@
   <div id="overlay">
     <h1 id="overlay-title">Detention Escape 3D</h1>
     <p id="overlay-text">
-      Stand up (<b>SPACE</b>) when the main teacher isn't looking. Throw paper (<b>T</b>) to distract them, 
-      sneak past the other students to the green exit door, and hold <b>E</b> to escape!
+      Stand up (<b>SPACE</b>) when the teacher looks down. Search empty desk drawers (<b>F</b>) to find the 
+      <b>Door Key</b> (for the front exit near the teacher) or the <b>Screwdriver</b> (for the wall vent). 
+      Sit in any empty desk to hide!
     </p>
     <button id="start-btn">Click to Play</button>
   </div>
