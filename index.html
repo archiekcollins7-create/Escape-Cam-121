@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Detention Escape 3D</title>
+  <link rel="stylesheet" href="style.css" />
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <div id="hud">
+    <div id="status">Main Teacher: <span id="teacher-state">Grading Papers (Safe)</span></div>
+    <div id="seat-status">State: Seated (Press <b>SPACE</b> to Stand)</div>
+    <div id="controls">
+      <b>WASD</b>: Move | <b>Mouse</b>: Look | <b>T</b>: Throw Paper Distraction | <b>E</b>: Unlock Door
+    </div>
+    <div id="unlock-bar-container" class="hidden">
+      <div id="unlock-bar"></div>
+    </div>
+  </div>
+
+  <div id="crosshair">+</div>
+
+  <div id="overlay">
+    <h1 id="overlay-title">Detention Escape 3D</h1>
+    <p id="overlay-text">
+      Stand up (<b>SPACE</b>) when the main teacher isn't looking. Throw paper (<b>T</b>) to distract them, 
+      sneak past the other students to the green exit door, and hold <b>E</b> to escape!
+    </p>
+    <button id="start-btn">Click to Play</button>
+  </div>
+
+  <script type="module" src="main.js"></script>
+</body>
+</html>
