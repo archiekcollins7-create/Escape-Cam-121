@@ -167,130 +167,28 @@ function createStudent(shirtColor) {
 function createTeacher() {
   const teacherGroup = new THREE.Group();
 
-  const cardiganMat = new THREE.MeshStandardMaterial({ color: 0xd8d5ce, roughness: 0.9 });
-  const torso = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.88, 0.42), cardiganMat);
-  torso.position.y = 1.12;
-  torso.castShadow = true;
-  teacherGroup.add(torso);
+  // Load 2D Teacher Image Sprite ('teacher.png')
+  const textureLoader = new THREE.TextureLoader();
+  const teacherTexture = textureLoader.load('teacher.png', undefined, undefined, (err) => {
+    console.log('Error loading teacher image. Using fallback color.');
+  });
 
-  const shirt = new THREE.Mesh(
-    new THREE.BoxGeometry(0.28, 0.38, 0.44),
-    new THREE.MeshStandardMaterial({ color: 0xffffff })
-  );
-  shirt.position.y = 1.38;
-  teacherGroup.add(shirt);
+  const spriteMat = new THREE.MeshBasicMaterial({ 
+    map: teacherTexture, 
+    transparent: true,
+    side: THREE.DoubleSide 
+  });
 
-  const collar = new THREE.Mesh(new THREE.TorusGeometry(0.24, 0.085, 10, 20, Math.PI * 1.15), cardiganMat);
-  collar.rotation.x = Math.PI / 2.2;
-  collar.rotation.z = Math.PI * 0.92;
-  collar.position.set(0, 1.48, 0.08);
-  teacherGroup.add(collar);
+  const planeGeo = new THREE.PlaneGeometry(2.2, 2.8);
+  const teacherMesh = new THREE.Mesh(planeGeo, spriteMat);
+  teacherMesh.position.y = 1.4;
+  teacherGroup.add(teacherMesh);
 
-  const button = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.035, 0.035, 0.02, 16),
-    new THREE.MeshStandardMaterial({ color: 0x3b3530 })
-  );
-  button.rotation.x = Math.PI / 2;
-  button.position.set(0.02, 1.24, 0.22);
-  teacherGroup.add(button);
-
-  const legs = new THREE.Mesh(
-    new THREE.BoxGeometry(0.62, 0.72, 0.4),
-    new THREE.MeshStandardMaterial({ color: 0x2c3e50 })
-  );
-  legs.position.y = 0.36;
-  teacherGroup.add(legs);
-
+  // Head pivot placeholder for AI look-up/down animations
   const headPivot = new THREE.Group();
-  headPivot.position.set(0, 1.62, 0);
-
-  const faceCanvas = document.createElement('canvas');
-  faceCanvas.width = 512;
-  faceCanvas.height = 512;
-  const ctx = faceCanvas.getContext('2d');
-
-  ctx.fillStyle = '#e2ae88';
-  ctx.fillRect(0, 0, 512, 512);
-
-  ctx.fillStyle = '#1f1c19';
-  ctx.fillRect(0, 0, 512, 145);
-
-  ctx.fillStyle = 'rgba(165, 105, 70, 0.22)';
-  ctx.fillRect(195, 165, 122, 14);
-  ctx.fillRect(195, 185, 122, 10);
-
-  ctx.fillStyle = '#221c18';
-  ctx.beginPath();
-  ctx.moveTo(185, 222);
-  ctx.quadraticCurveTo(215, 205, 245, 220);
-  ctx.lineWidth = 11;
-  ctx.strokeStyle = '#221c18';
-  ctx.stroke();
-
-  ctx.beginPath();
-  ctx.moveTo(267, 220);
-  ctx.quadraticCurveTo(297, 205, 327, 222);
-  ctx.stroke();
-
-  [216, 296].forEach((ex) => {
-    ctx.fillStyle = '#f7f5f2';
-    ctx.beginPath();
-    ctx.ellipse(ex, 238, 16, 9, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.fillStyle = '#3b2416';
-    ctx.beginPath();
-    ctx.arc(ex, 238, 7.5, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.fillStyle = '#000000';
-    ctx.beginPath();
-    ctx.arc(ex, 238, 3.5, 0, Math.PI * 2);
-    ctx.fill();
-  });
-
-  ctx.strokeStyle = 'rgba(150, 90, 60, 0.45)';
-  ctx.lineWidth = 4;
-  ctx.beginPath();
-  ctx.moveTo(232, 285);
-  ctx.quadraticCurveTo(212, 325, 218, 360);
-  ctx.stroke();
-
-  ctx.beginPath();
-  ctx.moveTo(280, 285);
-  ctx.quadraticCurveTo(300, 325, 294, 360);
-  ctx.stroke();
-
-  ctx.strokeStyle = '#9e5848';
-  ctx.lineWidth = 6;
-  ctx.beginPath();
-  ctx.moveTo(226, 355);
-  ctx.quadraticCurveTo(256, 368, 286, 355);
-  ctx.stroke();
-
-  const faceTexture = new THREE.CanvasTexture(faceCanvas);
-  const headMat = new THREE.MeshStandardMaterial({ map: faceTexture, roughness: 0.7 });
-
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.24, 32, 32), headMat);
-  head.scale.set(0.9, 1.15, 0.96);
-  head.rotation.y = -Math.PI / 2;
-  head.position.y = 0.24;
-  headPivot.add(head);
-
-  const noseMat = new THREE.MeshStandardMaterial({ color: 0xdfa67e, roughness: 0.7 });
-  const nose = new THREE.Mesh(new THREE.ConeGeometry(0.042, 0.11, 12), noseMat);
-  nose.rotation.x = Math.PI / 2.2;
-  nose.position.set(0, 0.22, 0.24);
-  headPivot.add(nose);
-
-  [-0.22, 0.22].forEach((earX) => {
-    const ear = new THREE.Mesh(new THREE.SphereGeometry(0.055, 12, 12), noseMat);
-    ear.scale.set(0.45, 1.3, 0.8);
-    ear.position.set(earX, 0.23, 0);
-    headPivot.add(ear);
-  });
-
+  headPivot.position.set(0, 2.0, 0);
   teacherGroup.add(headPivot);
+
   return { group: teacherGroup, headPivot };
 }
 
