@@ -304,6 +304,7 @@ let inventory = {
   screwdriver: false
 };
 
+// Guaranteed loot assignment: First desk has KEY, Second has SCREWDRIVER
 function distributeLoot() {
   desks.forEach((d) => {
     d.drawerOpen = false;
@@ -313,15 +314,13 @@ function distributeLoot() {
   });
 
   const freeDesks = desks.filter((d) => !d.occupied);
-  freeDesks.sort(() => Math.random() - 0.5);
-
-  if (freeDesks[0]) freeDesks[0].loot = 'KEY';
-  if (freeDesks[1]) freeDesks[1].loot = 'SCREWDRIVER';
-  if (freeDesks[2]) freeDesks[2].loot = 'PAPER';
-  if (freeDesks[3]) freeDesks[3].loot = 'PAPER';
+  if (freeDesks.length >= 2) {
+    freeDesks[0].loot = 'KEY';
+    freeDesks[1].loot = 'SCREWDRIVER';
+  }
 }
 
-// --- Input Controls (Fixed with keyup toggles) ---
+// --- Input Controls ---
 const keys = {};
 
 document.addEventListener('keydown', (e) => {
@@ -353,6 +352,7 @@ document.addEventListener('keyup', (e) => {
     updateHUD();
   }
 
+  // Press F to Open/Close Drawers
   if (e.code === 'KeyF' && !isSeated) {
     const nearbyDesk = getNearbyDesk(2.6);
     if (nearbyDesk) {
@@ -375,24 +375,33 @@ document.addEventListener('keyup', (e) => {
       }
       animateDrawer();
 
-      if (nearbyDesk.drawerOpen && !nearbyDesk.looted) {
-        nearbyDesk.looted = true;
-        if (nearbyDesk.loot === 'KEY') {
-          inventory.key = true;
-          showPrompt('Found the FRONT DOOR KEY inside the desk drawer!');
-        } else if (nearbyDesk.loot === 'SCREWDRIVER') {
-          inventory.screwdriver = true;
-          showPrompt('Found a SCREWDRIVER! (Use on the wall vent)');
-        } else if (nearbyDesk.loot === 'PAPER') {
-          inventory.paper += 2;
-          showPrompt('Found 2 extra Paper Balls!');
+      if (nearbyDesk.drawerOpen) {
+        if (!nearbyDesk.looted && nearbyDesk.loot !== 'EMPTY') {
+          showPrompt(`Drawer open! Inside is a [${nearbyDesk.loot}]. Press E to grab it!`);
         } else {
-          showPrompt('The drawer is empty.');
+          showPrompt('The drawer is open and empty.');
         }
-        updateHUD();
-      } else if (!nearbyDesk.drawerOpen) {
+      } else {
         showPrompt('Closed the desk drawer.');
       }
+    }
+  }
+
+  // Press E to Grab Item from Open Drawer
+  if (e.code === 'KeyE' && !isSeated) {
+    const nearbyDesk = getNearbyDesk(2.6);
+    if (nearbyDesk && nearbyDesk.drawerOpen && !nearbyDesk.looted) {
+      nearbyDesk.looted = true;
+      if (nearbyDesk.loot === 'KEY') {
+        inventory.key = true;
+        showPrompt('Picked up the FRONT DOOR KEY!');
+      } else if (nearbyDesk.loot === 'SCREWDRIVER') {
+        inventory.screwdriver = true;
+        showPrompt('Picked up the SCREWDRIVER!');
+      } else {
+        showPrompt('Nothing to grab here.');
+      }
+      updateHUD();
     }
   }
 
@@ -506,7 +515,7 @@ function updateHUD() {
 
   document.getElementById('seat-status').innerHTML = isSeated
     ? 'State: Seated (Press <b>SPACE</b> to Stand)'
-    : 'State: Standing! (Press <b>SPACE</b> at any empty desk to Sit | Press <b>F</b> to open/close drawers)';
+    : 'State: Standing! (Press <b>SPACE</b> at any empty desk to Sit | Press <b>F</b> to open/close drawers | Press <b>E</b> to grab items)';
 
   const items = [`Paper Balls (${inventory.paper}) [Press T to Throw]`];
   if (inventory.key) items.push('Door Key');
@@ -665,7 +674,7 @@ function animate() {
     if (!isSeated && distToDoor < 3.0) {
       barContainer.classList.remove('hidden');
       if (!inventory.key) {
-        showPrompt('Locked! Find the Door Key inside a desk drawer.');
+        showPrompt('Locked! Find the Door Key inside an empty desk drawer (Press F then E).');
       } else if (keys['KeyE']) {
         unlockProgress += delta * 40;
         document.getElementById('unlock-bar').style.width = `${unlockProgress}%`;
@@ -676,7 +685,7 @@ function animate() {
     } else if (!isSeated && distToVent < 2.8) {
       barContainer.classList.remove('hidden');
       if (!inventory.screwdriver) {
-        showPrompt('Screwed shut! Find a Screwdriver inside a desk drawer.');
+        showPrompt('Screwed shut! Find a Screwdriver inside an empty desk drawer (Press F then E).');
       } else if (keys['KeyE']) {
         unlockProgress += delta * 40;
         document.getElementById('unlock-bar').style.width = `${unlockProgress}%`;
