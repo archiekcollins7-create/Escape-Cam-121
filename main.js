@@ -168,20 +168,18 @@ function createStudent(shirtColor) {
 function createTeacher() {
   const teacherGroup = new THREE.Group();
 
-  // Head pivot placeholder for AI look-up/down animations
   const headPivot = new THREE.Group();
   headPivot.position.set(0, 2.0, 0);
   teacherGroup.add(headPivot);
 
-  // Load 3D Teacher Model from Meshy ('teacher.glb')
   const loader = new GLTFLoader();
   loader.load('teacher.glb', (gltf) => {
     const model = gltf.scene;
-    model.scale.set(1.5, 1.5, 1.5); // Adjust model scale if needed
+    model.scale.set(1.5, 1.5, 1.5);
     model.position.y = 0;
     teacherGroup.add(model);
   }, undefined, (error) => {
-    console.error('Error loading teacher 3D model. Check filename teacher.glb in repo.', error);
+    console.error('Error loading teacher 3D model teacher.glb:', error);
   });
 
   return { group: teacherGroup, headPivot };
@@ -341,6 +339,7 @@ document.addEventListener('keydown', (e) => {
     updateHUD();
   }
 
+  // Animated Desk Drawer Open / Close Toggle
   if (e.code === 'KeyF' && !isSeated) {
     const nearbyDesk = getNearbyDesk(2.6);
     if (nearbyDesk) {
@@ -348,15 +347,26 @@ document.addEventListener('keydown', (e) => {
         showPrompt("Can't search a desk while someone is sitting there!");
         return;
       }
-      if (!nearbyDesk.drawerOpen) {
-        nearbyDesk.drawerOpen = true;
-        nearbyDesk.drawerMesh.position.z = nearbyDesk.z + 0.65;
+
+      nearbyDesk.drawerOpen = !nearbyDesk.drawerOpen;
+      const targetZ = nearbyDesk.drawerOpen ? nearbyDesk.z + 0.65 : nearbyDesk.z + 0.15;
+      
+      let slideProgress = 0;
+      const startZ = nearbyDesk.drawerMesh.position.z;
+      function animateDrawer() {
+        slideProgress += 0.1;
+        nearbyDesk.drawerMesh.position.z = THREE.MathUtils.lerp(startZ, targetZ, slideProgress);
+        if (slideProgress < 1.0) {
+          requestAnimationFrame(animateDrawer);
+        }
       }
-      if (!nearbyDesk.looted) {
+      animateDrawer();
+
+      if (nearbyDesk.drawerOpen && !nearbyDesk.looted) {
         nearbyDesk.looted = true;
         if (nearbyDesk.loot === 'KEY') {
           inventory.key = true;
-          showPrompt('Found the FRONT DOOR KEY!');
+          showPrompt('Found the FRONT DOOR KEY inside the desk drawer!');
         } else if (nearbyDesk.loot === 'SCREWDRIVER') {
           inventory.screwdriver = true;
           showPrompt('Found a SCREWDRIVER! (Use on the wall vent)');
@@ -364,9 +374,11 @@ document.addEventListener('keydown', (e) => {
           inventory.paper += 2;
           showPrompt('Found 2 extra Paper Balls!');
         } else {
-          showPrompt('Drawer is empty.');
+          showPrompt('The drawer is empty.');
         }
         updateHUD();
+      } else if (!nearbyDesk.drawerOpen) {
+        showPrompt('Closed the desk drawer.');
       }
     }
   }
@@ -422,6 +434,7 @@ controls.addEventListener('unlock', () => {
   }
 });
 
+// Animated Paper Ball Throwing Mechanics
 function throwDistraction() {
   if (inventory.paper <= 0) {
     showPrompt('No paper balls left! Search desk drawers (F).');
@@ -432,7 +445,8 @@ function throwDistraction() {
 
   const dir = new THREE.Vector3();
   camera.getWorldDirection(dir);
-  const target = camera.position.clone().add(dir.multiplyScalar(10));
+  const startPos = camera.position.clone();
+  const target = startPos.clone().add(dir.multiplyScalar(10));
   target.x = THREE.MathUtils.clamp(target.x, -roomWidth / 2 + 1, roomWidth / 2 - 1);
   target.z = THREE.MathUtils.clamp(target.z, -roomLength / 2 + 1, roomLength / 2 - 1);
   target.y = 0.2;
@@ -441,30 +455,47 @@ function throwDistraction() {
     new THREE.DodecahedronGeometry(0.22, 0),
     new THREE.MeshStandardMaterial({ color: 0xffffff })
   );
-  paper.position.copy(target);
+  paper.position.copy(startPos);
   scene.add(paper);
 
-  distractionPos = target;
-  teacherState = 'DISTRACTED';
-  stateTimer = 5.5;
-  setTimeout(() => scene.remove(paper), 5500);
+  let flightProgress = 0;
+  function animatePaper() {
+    flightProgress += 0.04;
+    paper.position.lerpVectors(startPos, target, flightProgress);
+    paper.rotation.x += 0.2;
+    paper.rotation.y += 0.2;
+
+    if (flightProgress < 1.0) {
+      requestAnimationFrame(animatePaper);
+    } else {
+      distractionPos = target;
+      teacherState = 'WHITEBOARD_WRITING';
+      stateTimer = 6.0;
+      showPrompt('Paper ball landed! The teacher goes to write on the whiteboard.');
+      setTimeout(() => scene.remove(paper), 6000);
+    }
+  }
+  animatePaper();
 }
 
 function updateHUD() {
   const stateEl = document.getElementById('teacher-state');
-  stateEl.textContent =
-    teacherState === 'GRADING'
-      ? 'Looking Down (Safe)'
-      : teacherState === 'WATCHING'
-      ? 'LOOKING UP & SCANNING!'
-      : 'Investigating Noise...';
-  stateEl.style.color = teacherState === 'WATCHING' ? '#ff4d4d' : '#4dff88';
+  if (teacherState === 'GRADING') {
+    stateEl.textContent = 'Grading Papers (Safe)';
+    stateEl.style.color = '#4dff88';
+  } else if (teacherState === 'WATCHING') {
+    stateEl.textContent = 'LOOKING UP & SCANNING!';
+    stateEl.style.color = '#ff4d4d';
+  } else {
+    stateEl.textContent = 'CAM 121: Writing on Whiteboard!';
+    stateEl.style.color = '#ffaa00';
+  }
 
   document.getElementById('seat-status').innerHTML = isSeated
     ? 'State: Seated (Press <b>SPACE</b> to Stand)'
-    : 'State: Standing! (Press <b>SPACE</b> at any empty desk to Sit)';
+    : 'State: Standing! (Press <b>SPACE</b> at any empty desk to Sit | Press <b>F</b> to open/close drawers)';
 
-  const items = [`Paper Balls (${inventory.paper})`];
+  const items = [`Paper Balls (${inventory.paper}) [Press T to Throw]`];
   if (inventory.key) items.push('Door Key');
   if (inventory.screwdriver) items.push('Screwdriver');
   document.getElementById('inv-list').textContent = items.join(' | ');
@@ -575,16 +606,19 @@ function animate() {
         teacherState = 'GRADING';
         stateTimer = 4.0;
       }
-    } else if (teacherState === 'DISTRACTED' && distractionPos) {
+    } else if (teacherState === 'WHITEBOARD_WRITING') {
       visionCone.visible = true;
-      teacherHead.rotation.x = THREE.MathUtils.lerp(teacherHead.rotation.x, 0.1, delta * 5);
-      teacher.lookAt(distractionPos.x, 0, distractionPos.z);
-      if (teacher.position.distanceTo(distractionPos) > 1.8) {
-        teacher.position.lerp(new THREE.Vector3(distractionPos.x, 0, distractionPos.z), delta * 1.8);
-      }
+      const whiteboardPos = new THREE.Vector3(-1.5, 0, -roomLength / 2 + 1.2);
+      teacher.position.lerp(whiteboardPos, delta * 3.0);
+      teacher.lookAt(-1.5, 2.0, -roomLength / 2);
+
+      teacherHead.rotation.x = Math.sin(elapsed * 15) * 0.08 + 0.2; 
+      teacher.rotation.y = Math.sin(elapsed * 20) * 0.05;
+
       if (stateTimer <= 0) {
         teacherState = 'GRADING';
-        stateTimer = 3.5;
+        stateTimer = 4.0;
+        showPrompt('Lunchtime detention supervision resumes...');
       }
     }
     updateHUD();
