@@ -15,11 +15,23 @@ body {
   top: 15px;
   left: 15px;
   color: white;
-  background: rgba(0, 0, 0, 0.7);
+  background: rgba(0, 0, 0, 0.75);
   padding: 12px 16px;
   border-radius: 8px;
   z-index: 10;
   line-height: 1.6;
+  max-width: 520px;
+}
+
+#inventory {
+  color: #ffd166;
+  margin: 4px 0;
+}
+
+#prompt-msg {
+  color: #4cc9f0;
+  font-weight: bold;
+  min-height: 22px;
 }
 
 #crosshair {
@@ -53,7 +65,7 @@ body {
 }
 
 #overlay p {
-  max-width: 480px;
+  max-width: 500px;
   margin-bottom: 20px;
   line-height: 1.5;
   color: #ddd;
