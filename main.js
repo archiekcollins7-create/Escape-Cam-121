@@ -167,12 +167,11 @@ function createStudent(shirtColor) {
 function createTeacher() {
   const teacherGroup = new THREE.Group();
 
-  // Head pivot placeholder for animations
   const headPivot = new THREE.Group();
   headPivot.position.set(0, 2.0, 0);
   teacherGroup.add(headPivot);
 
-  // Load the uploaded photo sprite (teacher.png)
+  // Load teacher.png sprite properly via TextureLoader
   const textureLoader = new THREE.TextureLoader();
   const teacherTexture = textureLoader.load('teacher.png', undefined, undefined, (err) => {
     console.error('Error loading teacher.png image sprite:', err);
@@ -347,6 +346,7 @@ document.addEventListener('keydown', (e) => {
     updateHUD();
   }
 
+  // Smooth sliding desk drawers when pressing F
   if (e.code === 'KeyF' && !isSeated) {
     const nearbyDesk = getNearbyDesk(2.6);
     if (nearbyDesk) {
@@ -444,6 +444,7 @@ controls.addEventListener('unlock', () => {
   }
 });
 
+// Paper throwing animation and noise trigger
 function throwDistraction() {
   if (inventory.paper <= 0) {
     showPrompt('No paper balls left! Search desk drawers (F).');
@@ -510,6 +511,7 @@ function updateHUD() {
   document.getElementById('inv-list').textContent = items.join(' | ');
 }
 
+// 3-Strike CAM 121 Dragging Cutscene
 function triggerCam121Cutscene() {
   if (isCutsceneActive) return;
   isCutsceneActive = true;
@@ -518,7 +520,7 @@ function triggerCam121Cutscene() {
 
   strikes--; // Lose 1 strike
 
-  // Teleport player temporarily to CAM 121 isolation coordinates
+  // Teleport player temporarily into CAM 121 room coordinates
   camera.position.set(-40, 1.7, -40);
   camera.lookAt(0, 1.7, -40);
 
@@ -527,7 +529,7 @@ function triggerCam121Cutscene() {
   if (strikes > 0) {
     document.getElementById('overlay-title').textContent = `BUSTED! Dragged to CAM 121 (${strikes} Strikes Left)`;
     document.getElementById('overlay-text').textContent = 
-      `The teacher caught you and dragged you into CAM 121 to write aggressively on the whiteboard! You have ${strikes} strikes left. Click below to sneak back out.`;
+      `The teacher caught you and dragged you into CAM 121 to write aggressively on the whiteboard! You have ${strikes} strikes left before game over. Click below to sneak back out.`;
     startBtn.textContent = 'Sneak Back to Classroom';
   } else {
     document.getElementById('overlay-title').textContent = 'PERMANENT DETENTION! (Game Over)';
