@@ -298,7 +298,7 @@ let teacherState = 'GRADING';
 let stateTimer = 4.0;
 let distractionPos = null;
 let unlockProgress = 0;
-let strikes = 3; // 3 strikes allowed!
+let strikes = 3;
 
 let inventory = {
   paper: 3,
@@ -346,7 +346,6 @@ document.addEventListener('keydown', (e) => {
     updateHUD();
   }
 
-  // Smooth sliding desk drawers when pressing F
   if (e.code === 'KeyF' && !isSeated) {
     const nearbyDesk = getNearbyDesk(2.6);
     if (nearbyDesk) {
@@ -444,7 +443,6 @@ controls.addEventListener('unlock', () => {
   }
 });
 
-// Paper throwing animation and noise trigger
 function throwDistraction() {
   if (inventory.paper <= 0) {
     showPrompt('No paper balls left! Search desk drawers (F).');
@@ -511,16 +509,14 @@ function updateHUD() {
   document.getElementById('inv-list').textContent = items.join(' | ');
 }
 
-// 3-Strike CAM 121 Dragging Cutscene
 function triggerCam121Cutscene() {
   if (isCutsceneActive) return;
   isCutsceneActive = true;
   gameActive = false;
   controls.unlock();
 
-  strikes--; // Lose 1 strike
+  strikes--;
 
-  // Teleport player temporarily into CAM 121 room coordinates
   camera.position.set(-40, 1.7, -40);
   camera.lookAt(0, 1.7, -40);
 
@@ -529,7 +525,7 @@ function triggerCam121Cutscene() {
   if (strikes > 0) {
     document.getElementById('overlay-title').textContent = `BUSTED! Dragged to CAM 121 (${strikes} Strikes Left)`;
     document.getElementById('overlay-text').textContent = 
-      `The teacher caught you and dragged you into CAM 121 to write aggressively on the whiteboard! You have ${strikes} strikes left before game over. Click below to sneak back out.`;
+      `The teacher caught you and dragged you into CAM 121 to write aggressively on the whiteboard! You have ${strikes} strikes left. Click below to sneak back out.`;
     startBtn.textContent = 'Sneak Back to Classroom';
   } else {
     document.getElementById('overlay-title').textContent = 'PERMANENT DETENTION! (Game Over)';
@@ -630,7 +626,6 @@ function animate() {
       }
     } else if (teacherState === 'WHITEBOARD_WRITING') {
       visionCone.visible = true;
-      // Teacher goes to whiteboard and writes aggressively!
       const whiteboardPos = new THREE.Vector3(-1.5, 0, -roomLength / 2 + 1.2);
       teacher.position.lerp(whiteboardPos, delta * 3.0);
       teacher.lookAt(-1.5, 2.0, -roomLength / 2);
