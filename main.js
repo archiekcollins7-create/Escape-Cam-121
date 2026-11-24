@@ -321,25 +321,33 @@ function distributeLoot() {
   if (freeDesks[3]) freeDesks[3].loot = 'PAPER';
 }
 
-// --- Input Controls ---
+// --- Input Controls (Fixed with keyup toggles) ---
 const keys = {};
+
 document.addEventListener('keydown', (e) => {
   keys[e.code] = true;
+});
+
+document.addEventListener('keyup', (e) => {
+  keys[e.code] = false;
   if (!gameActive) return;
 
   if (e.code === 'Space') {
     if (isSeated) {
       isSeated = false;
-      // Stand up slightly next to the desk so movement unblocks properly
       camera.position.set(currentDesk.seatPos.x, 1.7, currentDesk.seatPos.z + 1.2);
+      showPrompt('Stood up from desk. Use WASD to move!');
     } else {
       const nearbyDesk = getNearbyDesk(2.3);
       if (nearbyDesk && !nearbyDesk.occupied) {
         isSeated = true;
         currentDesk = nearbyDesk;
         camera.position.copy(nearbyDesk.seatPos);
+        showPrompt('Sat back down at desk.');
       } else if (nearbyDesk && nearbyDesk.occupied) {
         showPrompt('That desk is occupied by another student!');
+      } else {
+        showPrompt('Get closer to an empty desk to sit down.');
       }
     }
     updateHUD();
@@ -392,8 +400,6 @@ document.addEventListener('keydown', (e) => {
     throwDistraction();
   }
 });
-
-document.addEventListener('keyup', (e) => (keys[e.code] = false));
 
 function getNearbyDesk(maxDist) {
   let closest = null;
