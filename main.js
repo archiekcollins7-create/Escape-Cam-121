@@ -103,7 +103,7 @@ for (let z = -6; z <= 4; z += 10) {
   scene.add(shelf);
 }
 
-// --- Escape Route 1: Front Door near Teacher's Desk ---
+// --- Escape Route 1: Front Door ---
 const exitDoor = new THREE.Mesh(
   new THREE.BoxGeometry(2.3, 3.8, 0.5),
   new THREE.MeshStandardMaterial({ color: 0x28a745 })
@@ -118,7 +118,7 @@ const doorKnob = new THREE.Mesh(
 doorKnob.position.set(6.7, 1.8, -roomLength / 2 + 0.6);
 scene.add(doorKnob);
 
-// --- Escape Route 2: Air Vent on Lower Right Wall ---
+// --- Escape Route 2: Air Vent ---
 const vent = new THREE.Mesh(
   new THREE.BoxGeometry(0.4, 1.4, 1.6),
   new THREE.MeshStandardMaterial({ color: 0x7f8c8d, metalness: 0.6, roughness: 0.4 })
@@ -179,7 +179,7 @@ function createTeacher() {
     model.position.y = 0;
     teacherGroup.add(model);
   }, undefined, (error) => {
-    console.error('Error loading teacher 3D model teacher.glb:', error);
+    console.error('Error loading teacher.glb model:', error);
   });
 
   return { group: teacherGroup, headPivot };
@@ -292,6 +292,7 @@ let teacherState = 'GRADING';
 let stateTimer = 4.0;
 let distractionPos = null;
 let unlockProgress = 0;
+let strikes = 3; // 3 strikes allowed!
 
 let inventory = {
   paper: 3,
@@ -339,7 +340,6 @@ document.addEventListener('keydown', (e) => {
     updateHUD();
   }
 
-  // Animated Desk Drawer Open / Close Toggle
   if (e.code === 'KeyF' && !isSeated) {
     const nearbyDesk = getNearbyDesk(2.6);
     if (nearbyDesk) {
@@ -416,6 +416,9 @@ function showPrompt(msg) {
 const overlay = document.getElementById('overlay');
 const startBtn = document.getElementById('start-btn');
 startBtn.addEventListener('click', () => {
+  if (strikes <= 0) {
+    strikes = 3; // Reset strikes on full game restart
+  }
   isCutsceneActive = false;
   resetGame();
   controls.lock();
@@ -434,7 +437,6 @@ controls.addEventListener('unlock', () => {
   }
 });
 
-// Animated Paper Ball Throwing Mechanics
 function throwDistraction() {
   if (inventory.paper <= 0) {
     showPrompt('No paper balls left! Search desk drawers (F).');
@@ -481,13 +483,13 @@ function throwDistraction() {
 function updateHUD() {
   const stateEl = document.getElementById('teacher-state');
   if (teacherState === 'GRADING') {
-    stateEl.textContent = 'Grading Papers (Safe)';
+    stateEl.textContent = `Grading (Safe) | Strikes Left: ${strikes}/3`;
     stateEl.style.color = '#4dff88';
   } else if (teacherState === 'WATCHING') {
-    stateEl.textContent = 'LOOKING UP & SCANNING!';
+    stateEl.textContent = `SCANNING! | Strikes Left: ${strikes}/3`;
     stateEl.style.color = '#ff4d4d';
   } else {
-    stateEl.textContent = 'CAM 121: Writing on Whiteboard!';
+    stateEl.textContent = `CAM 121: Writing on Whiteboard! | Strikes: ${strikes}/3`;
     stateEl.style.color = '#ffaa00';
   }
 
@@ -507,14 +509,25 @@ function triggerCam121Cutscene() {
   gameActive = false;
   controls.unlock();
 
+  strikes--; // Lose 1 strike out of 3
+
+  // Teleport player temporarily into CAM 121 room coordinates
   camera.position.set(-40, 1.7, -40);
   camera.lookAt(0, 1.7, -40);
 
   overlay.classList.remove('hidden');
-  document.getElementById('overlay-title').textContent = 'BUSTED! Dragged to CAM 121';
-  document.getElementById('overlay-text').textContent = 
-    'The teacher caught you out of your seat and dragged you all alone into CAM 121 for detention isolation! Click below to sneak back out to your desk.';
-  startBtn.textContent = 'Sneak Back to Classroom';
+
+  if (strikes > 0) {
+    document.getElementById('overlay-title').textContent = `BUSTED! Dragged to CAM 121 (${strikes} Strikes Left)`;
+    document.getElementById('overlay-text').textContent = 
+      `The teacher dragged you into CAM 121 and started writing aggressively on the whiteboard! You have ${strikes} strikes left before permanent detention failure. Click below to sneak back out.`;
+    startBtn.textContent = 'Sneak Back to Classroom';
+  } else {
+    document.getElementById('overlay-title').textContent = 'PERMANENT DETENTION! (Game Over)';
+    document.getElementById('overlay-text').textContent = 
+      'You got caught 3 times! The teacher locked you in CAM 121 forever. Game over!';
+    startBtn.textContent = 'Play Again';
+  }
 }
 
 function endGame(title, text) {
@@ -527,6 +540,9 @@ function endGame(title, text) {
 }
 
 function resetGame() {
+  if (strikes <= 0) {
+    strikes = 3;
+  }
   distributeLoot();
   inventory = { paper: 3, key: false, screwdriver: false };
   isSeated = true;
@@ -608,6 +624,7 @@ function animate() {
       }
     } else if (teacherState === 'WHITEBOARD_WRITING') {
       visionCone.visible = true;
+      // Teacher goes to whiteboard and writes aggressively!
       const whiteboardPos = new THREE.Vector3(-1.5, 0, -roomLength / 2 + 1.2);
       teacher.position.lerp(whiteboardPos, delta * 3.0);
       teacher.lookAt(-1.5, 2.0, -roomLength / 2);
@@ -618,7 +635,7 @@ function animate() {
       if (stateTimer <= 0) {
         teacherState = 'GRADING';
         stateTimer = 4.0;
-        showPrompt('Lunchtime detention supervision resumes...');
+        showPrompt('Teacher finishes writing and resumes supervision...');
       }
     }
     updateHUD();
