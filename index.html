@@ -1,47 +1,28 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Detention Escape 3D</title>
-  <link rel="stylesheet" href="style.css" />
-  <script type="importmap">
-    {
-      "imports": {
-        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
-      }
-    }
-  </script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Turbo Arena</title>
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
+<section id="menu">
+  <h1>Turbo Arena</h1>
+  <p class="sub">Pick your car, then score more goals than the other team in 3 minutes.</p>
+  <div id="cars"></div>
+  <button id="start">Kick off</button>
+  <p class="help">Drive: W A S D or arrow keys &nbsp;|&nbsp; Boost: Space &nbsp;|&nbsp; Drift: Shift &nbsp;|&nbsp; Reset to menu: Esc</p>
+</section>
+
+<section id="wrap" class="hidden">
   <div id="hud">
-    <div id="status">Teacher: <span id="teacher-state">Looking Down (Safe)</span></div>
-    <div id="seat-status">State: Seated (Press <b>SPACE</b> to Stand)</div>
-    <div id="inventory">
-      <b>Inventory:</b> <span id="inv-list">Paper Balls (3)</span>
-    </div>
-    <div id="controls">
-      <b>WASD</b>: Move | <b>SPACE</b>: Sit/Stand at Empty Desk | <b>F</b>: Open Drawer | <b>T</b>: Throw Paper | <b>E</b>: Escape
-    </div>
-    <div id="prompt-msg"></div>
-    <div id="unlock-bar-container" class="hidden">
-      <div id="unlock-bar"></div>
-    </div>
+    <div id="score"><b id="s0">0</b><span id="time">3:00</span><b id="s1">0</b></div>
+    <div id="boostbox"><div id="boost"><i></i></div><span id="bval">33</span></div>
   </div>
-
-  <div id="crosshair">+</div>
-
-  <div id="overlay">
-    <h1 id="overlay-title">Detention Escape 3D</h1>
-    <p id="overlay-text">
-      Stand up (<b>SPACE</b>) when the teacher looks down. Search empty desk drawers (<b>F</b>) to find the 
-      <b>Door Key</b> (for the front exit near the teacher) or the <b>Screwdriver</b> (for the wall vent). 
-      Sit in any empty desk to hide!
-    </p>
-    <button id="start-btn">Click to Play</button>
-  </div>
-
-  <script type="module" src="main.js"></script>
+  <canvas id="game"></canvas>
+  <div id="banner"></div>
+</section>
+<script src="game.js"></script>
 </body>
 </html>
