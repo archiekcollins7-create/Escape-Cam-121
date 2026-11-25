@@ -11,8 +11,9 @@
   <h1>Turbo Arena</h1>
   <p class="sub">Pick your car, then outscore the other team in 3 minutes.</p>
   <div id="cars"></div>
+  <label class="sub">Opponents <select id="diff"><option value="0.85">Rookie</option><option value="1" selected>Pro</option><option value="1.12">Legend</option></select></label>
   <button id="start" onclick="if(!window.TURBO)alert('game.js or three.js did not load. Keep index.html, style.css and game.js in the same folder, and check your internet connection (three.js loads from a CDN).')">Kick off</button>
-  <p class="help">W/S drive &nbsp;|&nbsp; A/D steer &nbsp;|&nbsp; Space jump (press again in the air to hop) &nbsp;|&nbsp; Shift boost &nbsp;|&nbsp; In the air: S nose up, W nose down &nbsp;|&nbsp; C ball cam &nbsp;|&nbsp; Esc menu</p>
+  <p class="help">W/S drive &nbsp;|&nbsp; A/D steer &nbsp;|&nbsp; Space jump, then Space again + W/A/S/D for a flip dodge &nbsp;|&nbsp; Shift boost &nbsp;|&nbsp; In the air: S nose up, W nose down &nbsp;|&nbsp; C ball cam &nbsp;|&nbsp; Esc menu</p>
 </section>
 
 <section id="wrap" class="hidden">
