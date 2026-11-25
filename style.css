@@ -31,3 +31,13 @@ canvas{width:100%;max-width:calc((100vh - 24px) * 1.914);height:auto;aspect-rati
 #boost{width:120px;height:10px;background:#0a1018;border-radius:5px;overflow:hidden}
 #boost i{display:block;height:100%;width:33%;background:linear-gradient(90deg,#ffb347,#ff5e00)}
 #banner{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:clamp(2rem,9vw,6rem);font-weight:900;font-style:italic;text-shadow:0 4px 30px #000;pointer-events:none}
+
+/* ---- 3D version overrides ---- */
+#wrap{display:block}
+#wrap canvas{position:fixed;inset:0;width:100%;height:100%;max-width:none;aspect-ratio:auto;border-radius:0;background:#0b1c33}
+#ring{position:fixed;right:28px;bottom:28px;width:132px;height:132px;border-radius:50%;z-index:2;display:flex;flex-direction:column;align-items:center;justify-content:center;background:conic-gradient(#ffb300 calc(var(--p,33)*1%),#223048 0);pointer-events:none}
+#ring::before{content:"";position:absolute;inset:13px;border-radius:50%;background:#0a1018e8}
+#ring>*{position:relative}
+#boostnum{font-size:2.6rem;font-weight:900;font-style:italic;line-height:1}
+#ring small{font-size:.75rem;letter-spacing:2px;color:var(--dim)}
+#cam{position:fixed;left:22px;bottom:22px;z-index:2;font-weight:800;color:#fff;background:#0a1018b0;padding:6px 12px;border-radius:8px;pointer-events:none}
