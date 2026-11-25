@@ -41,3 +41,5 @@ canvas{width:100%;max-width:calc((100vh - 24px) * 1.914);height:auto;aspect-rati
 #boostnum{font-size:2.6rem;font-weight:900;font-style:italic;line-height:1}
 #ring small{font-size:.75rem;letter-spacing:2px;color:var(--dim)}
 #cam{position:fixed;left:22px;bottom:22px;z-index:2;font-weight:800;color:#fff;background:#0a1018b0;padding:6px 12px;border-radius:8px;pointer-events:none}
+
+select{font:inherit;margin-left:8px;padding:6px 10px;border-radius:8px;border:2px solid var(--line);background:var(--panel);color:var(--txt)}
