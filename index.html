@@ -3,26 +3,25 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Turbo Arena</title>
+<title>Turbo Arena 3D</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <section id="menu">
   <h1>Turbo Arena</h1>
-  <p class="sub">Pick your car, then score more goals than the other team in 3 minutes.</p>
+  <p class="sub">Pick your car, then outscore the other team in 3 minutes.</p>
   <div id="cars"></div>
-  <button id="start">Kick off</button>
-  <p class="help">Drive: W A S D or arrow keys &nbsp;|&nbsp; Boost: Space &nbsp;|&nbsp; Drift: Shift &nbsp;|&nbsp; Reset to menu: Esc</p>
+  <button id="start" onclick="if(!window.TURBO)alert('game.js or three.js did not load. Keep index.html, style.css and game.js in the same folder, and check your internet connection (three.js loads from a CDN).')">Kick off</button>
+  <p class="help">W/S drive &nbsp;|&nbsp; A/D steer &nbsp;|&nbsp; Space jump (press again in the air to hop) &nbsp;|&nbsp; Shift boost &nbsp;|&nbsp; In the air: S nose up, W nose down &nbsp;|&nbsp; C ball cam &nbsp;|&nbsp; Esc menu</p>
 </section>
 
 <section id="wrap" class="hidden">
-  <div id="hud">
-    <div id="score"><b id="s0">0</b><span id="time">3:00</span><b id="s1">0</b></div>
-    <div id="boostbox"><div id="boost"><i></i></div><span id="bval">33</span></div>
-  </div>
-  <canvas id="game"></canvas>
+  <div id="hud"><div id="score"><b id="s0">0</b><span id="time">3:00</span><b id="s1">0</b></div></div>
+  <div id="ring"><div id="boostnum">33</div><small>BOOST</small></div>
+  <div id="cam">BALL CAM</div>
   <div id="banner"></div>
 </section>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="game.js"></script>
 </body>
 </html>
