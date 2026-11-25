@@ -1,712 +1,261 @@
-import * as THREE from 'three';
-import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
+// Turbo Arena - top-down car soccer. 2v2: you + 1 AI teammate vs 2 AI.
+const $ = id => document.getElementById(id);
+const cv = $('game'), g = cv.getContext('2d');
+const W = 1200, H = 700, GD = 70, GH = 250, MATCH = 180;
+cv.width = W + GD * 2; cv.height = H;
 
-// --- Scene & Camera Setup ---
-const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x1e242b);
-scene.fog = new THREE.Fog(0x1e242b, 16, 48);
+// ---- Car roster (add more here!) ----
+const CARS = [
+  { name: 'Striker',   color: '#ff7a18', acc: 620, max: 560, turn: 3.4, mass: 1.0, bacc: 900,  desc: 'All-rounder' },
+  { name: 'Bulldozer', color: '#9aa3b2', acc: 480, max: 500, turn: 2.6, mass: 1.9, bacc: 800,  desc: 'Heavy hitter' },
+  { name: 'Comet',     color: '#22d3ee', acc: 700, max: 650, turn: 3.0, mass: 0.8, bacc: 1000, desc: 'Top speed' },
+  { name: 'Drifter',   color: '#a855f7', acc: 600, max: 540, turn: 4.4, mass: 0.9, bacc: 850,  desc: 'Super agile' },
+  { name: 'Toxic',     color: '#84cc16', acc: 660, max: 580, turn: 3.6, mass: 1.1, bacc: 1100, desc: 'Boost beast' },
+  { name: 'Inferno',   color: '#ef4444', acc: 680, max: 600, turn: 3.2, mass: 1.2, bacc: 950,  desc: 'Fast and mean' },
+];
+const TEAM = ['#3b82f6', '#ff7a18'];
 
-const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.shadowMap.enabled = true;
-document.body.appendChild(renderer.domElement);
-
-// --- Lighting ---
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-scene.add(ambientLight);
-
-for (let z = -10; z <= 10; z += 10) {
-  const light = new THREE.PointLight(0xfff5e0, 0.85, 26);
-  light.position.set(0, 5.5, z);
-  light.castShadow = true;
-  scene.add(light);
-
-  const fixture = new THREE.Mesh(
-    new THREE.BoxGeometry(3.2, 0.12, 0.8),
-    new THREE.MeshBasicMaterial({ color: 0xffffff })
-  );
-  fixture.position.set(0, 5.92, z);
-  scene.add(fixture);
-}
-
-// --- Classroom Architecture (24m x 30m) ---
-const roomWidth = 24;
-const roomLength = 30;
-const roomHeight = 6;
-
-const floor = new THREE.Mesh(
-  new THREE.PlaneGeometry(roomWidth, roomLength),
-  new THREE.MeshStandardMaterial({ color: 0x4a5058, roughness: 0.85 })
-);
-floor.rotation.x = -Math.PI / 2;
-floor.receiveShadow = true;
-scene.add(floor);
-
-const ceiling = new THREE.Mesh(
-  new THREE.PlaneGeometry(roomWidth, roomLength),
-  new THREE.MeshStandardMaterial({ color: 0xeae6df })
-);
-ceiling.rotation.x = Math.PI / 2;
-ceiling.position.y = roomHeight;
-scene.add(ceiling);
-
-const wallMat = new THREE.MeshStandardMaterial({ color: 0xd6cfc2 });
-const frontWall = new THREE.Mesh(new THREE.BoxGeometry(roomWidth, roomHeight, 0.5), wallMat);
-frontWall.position.set(0, roomHeight / 2, -roomLength / 2);
-scene.add(frontWall);
-
-const backWall = new THREE.Mesh(new THREE.BoxGeometry(roomWidth, roomHeight, 0.5), wallMat);
-backWall.position.set(0, roomHeight / 2, roomLength / 2);
-scene.add(backWall);
-
-const leftWall = new THREE.Mesh(new THREE.BoxGeometry(0.5, roomHeight, roomLength), wallMat);
-leftWall.position.set(-roomWidth / 2, roomHeight / 2, 0);
-scene.add(leftWall);
-
-const rightWall = new THREE.Mesh(new THREE.BoxGeometry(0.5, roomHeight, roomLength), wallMat);
-rightWall.position.set(roomWidth / 2, roomHeight / 2, 0);
-scene.add(rightWall);
-
-// --- Classroom Details ---
-const chalkboard = new THREE.Mesh(
-  new THREE.BoxGeometry(9.5, 2.5, 0.2),
-  new THREE.MeshStandardMaterial({ color: 0x1e3f20 })
-);
-chalkboard.position.set(-1.5, 3, -roomLength / 2 + 0.3);
-scene.add(chalkboard);
-
-const clockMesh = new THREE.Mesh(
-  new THREE.CylinderGeometry(0.55, 0.55, 0.1, 24),
-  new THREE.MeshStandardMaterial({ color: 0xffffff })
-);
-clockMesh.rotation.x = Math.PI / 2;
-clockMesh.position.set(-1.5, 4.9, -roomLength / 2 + 0.3);
-scene.add(clockMesh);
-
-for (let z = -8; z <= 8; z += 8) {
-  const win = new THREE.Mesh(
-    new THREE.BoxGeometry(0.3, 2.5, 4),
-    new THREE.MeshStandardMaterial({ color: 0x87ceeb, emissive: 0x1d3b58 })
-  );
-  win.position.set(-roomWidth / 2 + 0.25, 3.2, z);
-  scene.add(win);
-}
-
-for (let z = -6; z <= 4; z += 10) {
-  const shelf = new THREE.Mesh(
-    new THREE.BoxGeometry(1, 3.5, 2.5),
-    new THREE.MeshStandardMaterial({ color: 0x5c3a21 })
-  );
-  shelf.position.set(roomWidth / 2 - 0.7, 1.75, z);
-  scene.add(shelf);
-}
-
-// --- Escape Route 1: Front Door ---
-const exitDoor = new THREE.Mesh(
-  new THREE.BoxGeometry(2.3, 3.8, 0.5),
-  new THREE.MeshStandardMaterial({ color: 0x28a745 })
-);
-exitDoor.position.set(7.5, 1.9, -roomLength / 2 + 0.3);
-scene.add(exitDoor);
-
-const doorKnob = new THREE.Mesh(
-  new THREE.SphereGeometry(0.12, 12, 12),
-  new THREE.MeshStandardMaterial({ color: 0xf1c40f })
-);
-doorKnob.position.set(6.7, 1.8, -roomLength / 2 + 0.6);
-scene.add(doorKnob);
-
-// --- Escape Route 2: Air Vent ---
-const vent = new THREE.Mesh(
-  new THREE.BoxGeometry(0.4, 1.4, 1.6),
-  new THREE.MeshStandardMaterial({ color: 0x7f8c8d, metalness: 0.6, roughness: 0.4 })
-);
-vent.position.set(roomWidth / 2 - 0.25, 0.85, 10.5);
-scene.add(vent);
-
-// --- Character Builders ---
-function createStudent(shirtColor) {
-  const student = new THREE.Group();
-
-  const torso = new THREE.Mesh(
-    new THREE.BoxGeometry(0.58, 0.72, 0.34),
-    new THREE.MeshStandardMaterial({ color: shirtColor })
-  );
-  torso.position.y = 1.02;
-  torso.castShadow = true;
-  student.add(torso);
-
-  const head = new THREE.Mesh(
-    new THREE.SphereGeometry(0.23, 16, 16),
-    new THREE.MeshStandardMaterial({ color: 0xf1c27d })
-  );
-  head.position.y = 1.58;
-  head.rotation.x = 0.35;
-  student.add(head);
-
-  const arm = new THREE.Mesh(
-    new THREE.BoxGeometry(0.16, 0.5, 0.16),
-    new THREE.MeshStandardMaterial({ color: shirtColor })
-  );
-  arm.position.set(0.32, 1.05, 0.22);
-  arm.rotation.x = -0.8;
-  student.add(arm);
-
-  const pencil = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.02, 0.02, 0.25),
-    new THREE.MeshStandardMaterial({ color: 0xf1c40f })
-  );
-  pencil.position.set(0.32, 0.95, 0.42);
-  pencil.rotation.x = 0.5;
-  student.add(pencil);
-
-  return { group: student, arm };
-}
-
-function createTeacher() {
-  const teacherGroup = new THREE.Group();
-  const headPivot = new THREE.Group();
-  headPivot.position.set(0, 2.0, 0);
-  teacherGroup.add(headPivot);
-
-  const textureLoader = new THREE.TextureLoader();
-  const teacherTexture = textureLoader.load('teacher.png', undefined, undefined, (err) => {
-    console.error('Error loading teacher.png image sprite:', err);
-  });
-
-  const spriteMat = new THREE.MeshBasicMaterial({ 
-    map: teacherTexture, 
-    transparent: true,
-    side: THREE.DoubleSide 
-  });
-
-  const planeGeo = new THREE.PlaneGeometry(2.2, 2.8);
-  const teacherMesh = new THREE.Mesh(planeGeo, spriteMat);
-  teacherMesh.position.y = 1.4;
-  teacherGroup.add(teacherMesh);
-
-  return { group: teacherGroup, headPivot };
-}
-
-// --- Desks, Drawers, Loot & Students ---
-const deskMat = new THREE.MeshStandardMaterial({ color: 0x8b5a2b });
-const drawerMat = new THREE.MeshStandardMaterial({ color: 0x6e441d });
-const chairMat = new THREE.MeshStandardMaterial({ color: 0x2c3e50 });
-const notebookMat = new THREE.MeshStandardMaterial({ color: 0xf8f9fa });
-const shirtColors = [0x3498db, 0x9b59b6, 0xe67e22, 0x1abc9c, 0x7f8c8d, 0xe74c3c];
-
-const colliders = [];
-const desks = [];
-const workingStudents = [];
-
-const cols = [-7.5, -2.5, 2.5, 7.5];
-const rows = [-5, -1, 3, 7, 11];
-
-rows.forEach((z, rIdx) => {
-  cols.forEach((x, cIdx) => {
-    const desk = new THREE.Mesh(new THREE.BoxGeometry(2.1, 1.0, 1.3), deskMat);
-    desk.position.set(x, 0.5, z);
-    desk.castShadow = true;
-    desk.receiveShadow = true;
-    scene.add(desk);
-    colliders.push({ x, z, w: 2.3, d: 1.5 });
-
-    const notebook = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.04, 0.6), notebookMat);
-    notebook.position.set(x, 1.02, z + 0.15);
-    scene.add(notebook);
-
-    const drawer = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.24, 0.9), drawerMat);
-    drawer.position.set(x, 0.78, z + 0.15);
-    scene.add(drawer);
-
-    const chair = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.55, 0.8), chairMat);
-    chair.position.set(x, 0.275, z + 0.95);
-    scene.add(chair);
-
-    const seatPos = new THREE.Vector3(x, 1.38, z + 0.95);
-    const isPlayerStart = rIdx === 3 && cIdx === 1;
-    const isOccupied = !isPlayerStart && (rIdx + cIdx) % 2 === 0;
-
-    if (isOccupied) {
-      const stu = createStudent(shirtColors[(rIdx + cIdx) % shirtColors.length]);
-      stu.group.position.set(x, 0, z + 0.95);
-      stu.group.rotation.y = Math.PI;
-      scene.add(stu.group);
-      workingStudents.push(stu);
-    }
-
-    desks.push({
-      x,
-      z,
-      seatPos,
-      occupied: isOccupied,
-      drawerMesh: drawer,
-      drawerOpen: false,
-      looted: false,
-      loot: 'EMPTY'
-    });
-  });
+// ---- Menu ----
+let pick = 0;
+const carsEl = $('cars');
+CARS.forEach((c, i) => {
+  const d = document.createElement('div');
+  d.className = 'card'; d.tabIndex = 0; d.style.setProperty('--c', c.color);
+  const bar = (l, v) => `<div class="bar"><span>${l}</span><div><i style="width:${v * 100}%"></i></div></div>`;
+  d.innerHTML = `<div class="car"></div><h3>${c.name}</h3><small>${c.desc}</small>` +
+    bar('Accel', c.acc / 700) + bar('Speed', c.max / 650) + bar('Turn', c.turn / 4.4) + bar('Weight', c.mass / 1.9);
+  const sel = () => { pick = i; [...carsEl.children].forEach((e, j) => e.classList.toggle('sel', j === i)); };
+  d.onclick = sel; d.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); sel(); } };
+  carsEl.appendChild(d);
+  if (i === 0) sel();
 });
 
-// --- Teacher Setup ---
-const teacherDesk = new THREE.Mesh(
-  new THREE.BoxGeometry(4.2, 1.1, 1.6),
-  new THREE.MeshStandardMaterial({ color: 0x4a2e15 })
-);
-teacherDesk.position.set(2.2, 0.55, -10.5);
-teacherDesk.castShadow = true;
-scene.add(teacherDesk);
-colliders.push({ x: 2.2, z: -10.5, w: 4.4, d: 1.8 });
-
-const gradingStack = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.08, 0.5), notebookMat);
-gradingStack.position.set(2.2, 1.14, -10.5);
-scene.add(gradingStack);
-
-const teacherObj = createTeacher();
-const teacher = teacherObj.group;
-const teacherHead = teacherObj.headPivot;
-
-const coneGeo = new THREE.ConeGeometry(5.2, 16, 32, 1, true);
-coneGeo.translate(0, -8, 0);
-coneGeo.rotateX(-Math.PI / 2);
-const coneMat = new THREE.MeshBasicMaterial({
-  color: 0xff2222,
-  transparent: true,
-  opacity: 0.18,
-  side: THREE.DoubleSide
-});
-const visionCone = new THREE.Mesh(coneGeo, coneMat);
-visionCone.position.set(0, 1.65, 0);
-teacher.add(visionCone);
-
-const teacherHome = new THREE.Vector3(2.2, 0, -12.0);
-teacher.position.copy(teacherHome);
-scene.add(teacher);
-
-// --- Game State & Inventory ---
-const controls = new PointerLockControls(camera, document.body);
-let currentDesk = desks.find((d) => d.seatPos.x === -2.5 && d.seatPos.z === 7.95) || desks[0];
-camera.position.copy(currentDesk.seatPos);
-
-let isSeated = true;
-let gameActive = false;
-let isCutsceneActive = false;
-let teacherState = 'GRADING';
-let stateTimer = 4.0;
-let distractionPos = null;
-let unlockProgress = 0;
-let strikes = 3;
-
-let inventory = {
-  paper: 3,
-  key: false,
-  screwdriver: false
-};
-
-// Guaranteed loot assignment: First desk has KEY, Second has SCREWDRIVER
-function distributeLoot() {
-  desks.forEach((d) => {
-    d.drawerOpen = false;
-    d.looted = false;
-    d.drawerMesh.position.z = d.z + 0.15;
-    d.loot = 'EMPTY';
-  });
-
-  const freeDesks = desks.filter((d) => !d.occupied);
-  if (freeDesks.length >= 2) {
-    freeDesks[0].loot = 'KEY';
-    freeDesks[1].loot = 'SCREWDRIVER';
-  }
-}
-
-// --- Input Controls ---
+// ---- State ----
 const keys = {};
+let cars = [], ball, pads = [], parts = [], score = [0, 0], timeLeft = MATCH, state = 'menu', stateT = 0, overtime = false;
 
-document.addEventListener('keydown', (e) => {
-  keys[e.code] = true;
-});
-
-document.addEventListener('keyup', (e) => {
-  keys[e.code] = false;
-  if (!gameActive) return;
-
-  if (e.code === 'Space') {
-    if (isSeated) {
-      isSeated = false;
-      camera.position.set(currentDesk.seatPos.x, 1.7, currentDesk.seatPos.z + 1.2);
-      showPrompt('Stood up from desk. Use WASD to move!');
-    } else {
-      const nearbyDesk = getNearbyDesk(2.3);
-      if (nearbyDesk && !nearbyDesk.occupied) {
-        isSeated = true;
-        currentDesk = nearbyDesk;
-        camera.position.copy(nearbyDesk.seatPos);
-        showPrompt('Sat back down at desk.');
-      } else if (nearbyDesk && nearbyDesk.occupied) {
-        showPrompt('That desk is occupied by another student!');
-      } else {
-        showPrompt('Get closer to an empty desk to sit down.');
-      }
-    }
-    updateHUD();
-  }
-
-  // Press F to Open/Close Drawers
-  if (e.code === 'KeyF' && !isSeated) {
-    const nearbyDesk = getNearbyDesk(2.6);
-    if (nearbyDesk) {
-      if (nearbyDesk.occupied) {
-        showPrompt("Can't search a desk while someone is sitting there!");
-        return;
-      }
-
-      nearbyDesk.drawerOpen = !nearbyDesk.drawerOpen;
-      const targetZ = nearbyDesk.drawerOpen ? nearbyDesk.z + 0.65 : nearbyDesk.z + 0.15;
-      
-      let slideProgress = 0;
-      const startZ = nearbyDesk.drawerMesh.position.z;
-      function animateDrawer() {
-        slideProgress += 0.1;
-        nearbyDesk.drawerMesh.position.z = THREE.MathUtils.lerp(startZ, targetZ, slideProgress);
-        if (slideProgress < 1.0) {
-          requestAnimationFrame(animateDrawer);
-        }
-      }
-      animateDrawer();
-
-      if (nearbyDesk.drawerOpen) {
-        if (!nearbyDesk.looted && nearbyDesk.loot !== 'EMPTY') {
-          showPrompt(`Drawer open! Inside is a [${nearbyDesk.loot}]. Press E to grab it!`);
-        } else {
-          showPrompt('The drawer is open and empty.');
-        }
-      } else {
-        showPrompt('Closed the desk drawer.');
-      }
-    }
-  }
-
-  // Press E to Grab Item from Open Drawer
-  if (e.code === 'KeyE' && !isSeated) {
-    const nearbyDesk = getNearbyDesk(2.6);
-    if (nearbyDesk && nearbyDesk.drawerOpen && !nearbyDesk.looted) {
-      nearbyDesk.looted = true;
-      if (nearbyDesk.loot === 'KEY') {
-        inventory.key = true;
-        showPrompt('Picked up the FRONT DOOR KEY!');
-      } else if (nearbyDesk.loot === 'SCREWDRIVER') {
-        inventory.screwdriver = true;
-        showPrompt('Picked up the SCREWDRIVER!');
-      } else {
-        showPrompt('Nothing to grab here.');
-      }
-      updateHUD();
-    }
-  }
-
-  if (e.code === 'KeyT') {
-    throwDistraction();
-  }
-});
-
-function getNearbyDesk(maxDist) {
-  let closest = null;
-  let minD = maxDist;
-  for (const d of desks) {
-    const dist = camera.position.distanceTo(d.seatPos);
-    if (dist < minD) {
-      minD = dist;
-      closest = d;
-    }
-  }
-  return closest;
+function mkCar(def, team, role, human) {
+  return { ...def, team, role, human, r: 24, m: def.mass, x: 0, y: 0, vx: 0, vy: 0, a: 0, boost: 33 };
 }
-
-let promptTimeout;
-function showPrompt(msg) {
-  const el = document.getElementById('prompt-msg');
-  el.textContent = msg;
-  clearTimeout(promptTimeout);
-  promptTimeout = setTimeout(() => {
-    el.textContent = '';
-  }, 3000);
+function newMatch() {
+  const others = CARS.filter((_, i) => i !== pick);
+  const rnd = () => others[Math.random() * others.length | 0];
+  cars = [mkCar(CARS[pick], 0, 0, true), mkCar(rnd(), 0, 1, false), mkCar(rnd(), 1, 0, false), mkCar(rnd(), 1, 1, false)];
+  ball = { x: W / 2, y: H / 2, vx: 0, vy: 0, r: 26, m: 0.7, rot: 0 };
+  const P = (x, y, big) => ({ x, y, big, t: 0 });
+  pads = [P(70, 70, 1), P(70, H - 70, 1), P(W - 70, 70, 1), P(W - 70, H - 70, 1),
+    P(W * .25, H * .2), P(W * .25, H * .8), P(W * .75, H * .2), P(W * .75, H * .8),
+    P(W * .5, H * .12), P(W * .5, H * .88), P(W * .4, H / 2), P(W * .6, H / 2), P(W * .5, H / 2 - 120), P(W * .5, H / 2 + 120)];
+  score = [0, 0]; timeLeft = MATCH; overtime = false; updateScore();
+  kickoff();
 }
-
-const overlay = document.getElementById('overlay');
-const startBtn = document.getElementById('start-btn');
-startBtn.addEventListener('click', () => {
-  if (strikes <= 0) {
-    strikes = 3;
-  }
-  isCutsceneActive = false;
-  resetGame();
-  controls.lock();
-});
-
-controls.addEventListener('lock', () => {
-  overlay.classList.add('hidden');
-  gameActive = true;
-});
-
-controls.addEventListener('unlock', () => {
-  if (gameActive && !isCutsceneActive) {
-    overlay.classList.remove('hidden');
-    document.getElementById('overlay-title').textContent = 'Paused';
-    startBtn.textContent = 'Resume';
-  }
-});
-
-function throwDistraction() {
-  if (inventory.paper <= 0) {
-    showPrompt('No paper balls left! Search desk drawers (F).');
-    return;
-  }
-  inventory.paper--;
-  updateHUD();
-
-  const dir = new THREE.Vector3();
-  camera.getWorldDirection(dir);
-  const startPos = camera.position.clone();
-  const target = startPos.clone().add(dir.multiplyScalar(10));
-  target.x = THREE.MathUtils.clamp(target.x, -roomWidth / 2 + 1, roomWidth / 2 - 1);
-  target.z = THREE.MathUtils.clamp(target.z, -roomLength / 2 + 1, roomLength / 2 - 1);
-  target.y = 0.2;
-
-  const paper = new THREE.Mesh(
-    new THREE.DodecahedronGeometry(0.22, 0),
-    new THREE.MeshStandardMaterial({ color: 0xffffff })
-  );
-  paper.position.copy(startPos);
-  scene.add(paper);
-
-  let flightProgress = 0;
-  function animatePaper() {
-    flightProgress += 0.04;
-    paper.position.lerpVectors(startPos, target, flightProgress);
-    paper.rotation.x += 0.2;
-    paper.rotation.y += 0.2;
-
-    if (flightProgress < 1.0) {
-      requestAnimationFrame(animatePaper);
-    } else {
-      distractionPos = target;
-      teacherState = 'WHITEBOARD_WRITING';
-      stateTimer = 6.0;
-      showPrompt('Paper ball landed! The teacher goes to write on the whiteboard.');
-      setTimeout(() => scene.remove(paper), 6000);
-    }
-  }
-  animatePaper();
-}
-
-function updateHUD() {
-  const stateEl = document.getElementById('teacher-state');
-  if (teacherState === 'GRADING') {
-    stateEl.textContent = `Grading (Safe) | Strikes Left: ${strikes}/3`;
-    stateEl.style.color = '#4dff88';
-  } else if (teacherState === 'WATCHING') {
-    stateEl.textContent = `SCANNING! | Strikes Left: ${strikes}/3`;
-    stateEl.style.color = '#ff4d4d';
-  } else {
-    stateEl.textContent = `CAM 121: Writing on Whiteboard! | Strikes: ${strikes}/3`;
-    stateEl.style.color = '#ffaa00';
-  }
-
-  document.getElementById('seat-status').innerHTML = isSeated
-    ? 'State: Seated (Press <b>SPACE</b> to Stand)'
-    : 'State: Standing! (Press <b>SPACE</b> at any empty desk to Sit | Press <b>F</b> to open/close drawers | Press <b>E</b> to grab items)';
-
-  const items = [`Paper Balls (${inventory.paper}) [Press T to Throw]`];
-  if (inventory.key) items.push('Door Key');
-  if (inventory.screwdriver) items.push('Screwdriver');
-  document.getElementById('inv-list').textContent = items.join(' | ');
-}
-
-function triggerCam121Cutscene() {
-  if (isCutsceneActive) return;
-  isCutsceneActive = true;
-  gameActive = false;
-  controls.unlock();
-
-  strikes--;
-
-  camera.position.set(-40, 1.7, -40);
-  camera.lookAt(0, 1.7, -40);
-
-  overlay.classList.remove('hidden');
-
-  if (strikes > 0) {
-    document.getElementById('overlay-title').textContent = `BUSTED! Dragged to CAM 121 (${strikes} Strikes Left)`;
-    document.getElementById('overlay-text').textContent = 
-      `The teacher caught you and dragged you into CAM 121 to write aggressively on the whiteboard! You have ${strikes} strikes left. Click below to sneak back out.`;
-    startBtn.textContent = 'Sneak Back to Classroom';
-  } else {
-    document.getElementById('overlay-title').textContent = 'PERMANENT DETENTION! (Game Over)';
-    document.getElementById('overlay-text').textContent = 
-      'You got caught 3 times! The teacher locked you in CAM 121 permanently.';
-    startBtn.textContent = 'Play Again';
-  }
-}
-
-function endGame(title, text) {
-  gameActive = false;
-  controls.unlock();
-  overlay.classList.remove('hidden');
-  document.getElementById('overlay-title').textContent = title;
-  document.getElementById('overlay-text').textContent = text;
-  startBtn.textContent = 'Play Again';
-}
-
-function resetGame() {
-  if (strikes <= 0) {
-    strikes = 3;
-  }
-  distributeLoot();
-  inventory = { paper: 3, key: false, screwdriver: false };
-  isSeated = true;
-  currentDesk = desks.find((d) => !d.occupied && d.z === 7) || desks[0];
-  camera.position.copy(currentDesk.seatPos);
-
-  teacher.position.copy(teacherHome);
-  teacher.rotation.set(0, 0, 0);
-  teacherState = 'GRADING';
-  stateTimer = 4.0;
-  unlockProgress = 0;
-  document.getElementById('unlock-bar').style.width = '0%';
-  updateHUD();
-}
-
-function checkDeskCollision(nextX, nextZ) {
-  for (const box of colliders) {
-    if (
-      Math.abs(nextX - box.x) < box.w / 2 + 0.3 &&
-      Math.abs(nextZ - box.z) < box.d / 2 + 0.3
-    ) {
-      return true;
-    }
-  }
-  return false;
-}
-
-// --- Main Game Loop ---
-const clock = new THREE.Clock();
-
-function animate() {
-  requestAnimationFrame(animate);
-  const delta = clock.getDelta();
-  const elapsed = clock.elapsedTime;
-
-  workingStudents.forEach((stu, i) => {
-    stu.arm.rotation.z = Math.sin(elapsed * 8 + i) * 0.12;
+function kickoff() {
+  ball.x = W / 2; ball.y = H / 2; ball.vx = ball.vy = 0;
+  cars.forEach(c => {
+    c.x = c.team ? W - 260 : 260; c.y = H / 2 + (c.role ? 130 : 0);
+    if (c.role) c.x = c.team ? W - 140 : 140;
+    c.a = c.team ? Math.PI : 0; c.vx = c.vy = 0; c.boost = 33;
   });
+  state = 'count'; stateT = 3;
+}
+$('start').onclick = () => { $('menu').classList.add('hidden'); $('wrap').classList.remove('hidden'); newMatch(); };
+addEventListener('keydown', e => {
+  keys[e.code] = true;
+  if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
+  if (e.code === 'Escape' && state !== 'menu') { state = 'menu'; $('wrap').classList.add('hidden'); $('menu').classList.remove('hidden'); }
+});
+addEventListener('keyup', e => keys[e.code] = false);
 
-  if (gameActive) {
-    if (!isSeated) {
-      const prevX = camera.position.x;
-      const prevZ = camera.position.z;
-      const speed = 4.5 * delta;
+// ---- Physics ----
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const angDiff = (a, b) => { let d = b - a; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; return d; };
 
-      if (keys['KeyW']) controls.moveForward(speed);
-      if (keys['KeyS']) controls.moveForward(-speed);
-      if (keys['KeyA']) controls.moveRight(-speed);
-      if (keys['KeyD']) controls.moveRight(speed);
-
-      camera.position.x = THREE.MathUtils.clamp(camera.position.x, -roomWidth / 2 + 0.8, roomWidth / 2 - 0.8);
-      camera.position.z = THREE.MathUtils.clamp(camera.position.z, -roomLength / 2 + 0.8, roomLength / 2 - 0.8);
-
-      if (checkDeskCollision(camera.position.x, camera.position.z)) {
-        camera.position.x = prevX;
-        camera.position.z = prevZ;
-      }
-    }
-
-    stateTimer -= delta;
-    if (teacherState === 'GRADING') {
-      visionCone.visible = false;
-      teacher.position.lerp(teacherHome, delta * 2);
-      teacher.lookAt(2.2, 0, 0);
-      if (stateTimer <= 0) {
-        teacherState = 'WATCHING';
-        stateTimer = 4.5;
-      }
-    } else if (teacherState === 'WATCHING') {
-      visionCone.visible = true;
-      teacher.position.x = 2.2 + Math.sin(elapsed * 0.8) * 3.0;
-      teacher.rotation.y = Math.sin(elapsed * 1.4) * 0.75;
-      if (stateTimer <= 0) {
-        teacherState = 'GRADING';
-        stateTimer = 4.0;
-      }
-    } else if (teacherState === 'WHITEBOARD_WRITING') {
-      visionCone.visible = true;
-      const whiteboardPos = new THREE.Vector3(-1.5, 0, -roomLength / 2 + 1.2);
-      teacher.position.lerp(whiteboardPos, delta * 3.0);
-      teacher.lookAt(-1.5, 2.0, -roomLength / 2);
-
-      teacher.rotation.y = Math.sin(elapsed * 20) * 0.05;
-
-      if (stateTimer <= 0) {
-        teacherState = 'GRADING';
-        stateTimer = 4.0;
-        showPrompt('Teacher finishes writing and resumes supervision...');
-      }
-    }
-    updateHUD();
-
-    if (!isSeated && visionCone.visible) {
-      const toPlayer = new THREE.Vector3().subVectors(camera.position, teacher.position);
-      const distance = toPlayer.length();
-      toPlayer.normalize();
-
-      const teacherForward = new THREE.Vector3(0, 0, 1).applyQuaternion(teacher.quaternion);
-      const angle = teacherForward.angleTo(toPlayer);
-
-      if (distance < 15.5 && angle < 0.42) {
-        triggerCam121Cutscene();
-      }
-    }
-
-    const distToDoor = camera.position.distanceTo(exitDoor.position);
-    const distToVent = camera.position.distanceTo(vent.position);
-    const barContainer = document.getElementById('unlock-bar-container');
-
-    if (!isSeated && distToDoor < 3.0) {
-      barContainer.classList.remove('hidden');
-      if (!inventory.key) {
-        showPrompt('Locked! Find the Door Key inside an empty desk drawer (Press F then E).');
-      } else if (keys['KeyE']) {
-        unlockProgress += delta * 40;
-        document.getElementById('unlock-bar').style.width = `${unlockProgress}%`;
-        if (unlockProgress >= 100) {
-          endGame('You Escaped!', 'You unlocked the front door right past the teacher!');
-        }
-      }
-    } else if (!isSeated && distToVent < 2.8) {
-      barContainer.classList.remove('hidden');
-      if (!inventory.screwdriver) {
-        showPrompt('Screwed shut! Find a Screwdriver inside an empty desk drawer (Press F then E).');
-      } else if (keys['KeyE']) {
-        unlockProgress += delta * 40;
-        document.getElementById('unlock-bar').style.width = `${unlockProgress}%`;
-        if (unlockProgress >= 100) {
-          endGame('You Escaped!', 'You unscrewed the air vent and crawled out of detention!');
-        }
-      }
-    } else {
-      barContainer.classList.add('hidden');
-      unlockProgress = 0;
-      document.getElementById('unlock-bar').style.width = '0%';
-    }
-  }
-
-  renderer.render(scene, camera);
+function driveCar(c, inp, dt) {
+  const fx = Math.cos(c.a), fy = Math.sin(c.a), rx = -fy, ry = fx;
+  const sp = c.vx * fx + c.vy * fy;
+  const boosting = inp.boost && c.boost > 0;
+  c.a += inp.steer * c.turn * (inp.drift ? 1.35 : 1) * clamp(sp / 180, -1, 1) * dt;
+  let acc = inp.thr * c.acc;
+  if (boosting) { acc += c.bacc; c.boost = Math.max(0, c.boost - 33 * dt); }
+  if (inp.thr < 0) acc = inp.thr * c.acc * 0.7;
+  c.vx += fx * acc * dt; c.vy += fy * acc * dt;
+  const lat = c.vx * rx + c.vy * ry, grip = inp.drift ? 1.5 : 9;
+  c.vx -= rx * lat * Math.min(1, grip * dt); c.vy -= ry * lat * Math.min(1, grip * dt);
+  const drag = 1 - (inp.thr || boosting ? 0.15 : 0.9) * dt;
+  c.vx *= drag; c.vy *= drag;
+  const max = c.max * (boosting ? 1.55 : 1), s = Math.hypot(c.vx, c.vy);
+  if (s > max) { const k = 1 + (max / s - 1) * Math.min(1, 5 * dt); c.vx *= k; c.vy *= k; }
+  c.x += c.vx * dt; c.y += c.vy * dt;
+  if (c.x < c.r) { c.x = c.r; c.vx = Math.abs(c.vx) * .3; }
+  if (c.x > W - c.r) { c.x = W - c.r; c.vx = -Math.abs(c.vx) * .3; }
+  if (c.y < c.r) { c.y = c.r; c.vy = Math.abs(c.vy) * .3; }
+  if (c.y > H - c.r) { c.y = H - c.r; c.vy = -Math.abs(c.vy) * .3; }
+  if (boosting && Math.random() < .8) parts.push({ x: c.x - fx * 26, y: c.y - fy * 26, vx: -fx * 120 + (Math.random() - .5) * 60, vy: -fy * 120 + (Math.random() - .5) * 60, l: .35, c: '#ffa63d' });
 }
 
-window.addEventListener('resize', () => {
-  camera.aspect = window.innerWidth / window.innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
-});
+function collide(a, b, e) {
+  const dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy), min = a.r + b.r;
+  if (d >= min || d === 0) return;
+  const nx = dx / d, ny = dy / d, ia = 1 / a.m, ib = 1 / b.m, ov = min - d;
+  a.x -= nx * ov * ia / (ia + ib); a.y -= ny * ov * ia / (ia + ib);
+  b.x += nx * ov * ib / (ia + ib); b.y += ny * ov * ib / (ia + ib);
+  const rel = (b.vx - a.vx) * nx + (b.vy - a.vy) * ny;
+  if (rel < 0) {
+    const j = -(1 + e) * rel / (ia + ib);
+    a.vx -= j * ia * nx; a.vy -= j * ia * ny; b.vx += j * ib * nx; b.vy += j * ib * ny;
+    if (b === ball || a === ball) burst(ball.x, ball.y, '#fff', Math.min(10, -rel / 60 | 0));
+  }
+}
+function burst(x, y, c, n) {
+  for (let i = 0; i < n; i++) { const t = Math.random() * 6.28, s = 60 + Math.random() * 160; parts.push({ x, y, vx: Math.cos(t) * s, vy: Math.sin(t) * s, l: .5, c }); }
+}
 
-animate();
+function updateBall(dt) {
+  const b = ball;
+  b.x += b.vx * dt; b.y += b.vy * dt;
+  b.vx *= 1 - .25 * dt; b.vy *= 1 - .25 * dt;
+  const s = Math.hypot(b.vx, b.vy); if (s > 1300) { b.vx *= 1300 / s; b.vy *= 1300 / s; }
+  b.rot += (b.vx + b.vy) * dt / b.r * .5;
+  const inG = Math.abs(b.y - H / 2) < GH / 2 - b.r * .5;
+  const lo = inG ? -GD + b.r : b.r, hi = inG ? W + GD - b.r : W - b.r;
+  if (b.x < lo) { b.x = lo; b.vx = Math.abs(b.vx) * .8; }
+  if (b.x > hi) { b.x = hi; b.vx = -Math.abs(b.vx) * .8; }
+  if (b.y < b.r) { b.y = b.r; b.vy = Math.abs(b.vy) * .8; }
+  if (b.y > H - b.r) { b.y = H - b.r; b.vy = -Math.abs(b.vy) * .8; }
+  if (b.x < 0 || b.x > W) { // inside a goal pocket: side walls
+    const t = H / 2 - GH / 2 + b.r, u = H / 2 + GH / 2 - b.r;
+    if (b.y < t) { b.y = t; b.vy = Math.abs(b.vy) * .8; }
+    if (b.y > u) { b.y = u; b.vy = -Math.abs(b.vy) * .8; }
+  }
+}
+
+// ---- AI ----
+function aiInput(c) {
+  const own = { x: c.team ? W : 0, y: H / 2 }, opp = { x: c.team ? 0 : W, y: H / 2 };
+  let tx, ty;
+  const dBall = Math.hypot(ball.x - c.x, ball.y - c.y);
+  if (c.role === 0) {
+    const dx = ball.x - opp.x, dy = ball.y - opp.y, d = Math.hypot(dx, dy) || 1;
+    tx = ball.x + dx / d * 50; ty = ball.y + dy / d * 50;
+    if (dBall < 170) { tx = ball.x + ball.vx * .25; ty = ball.y + ball.vy * .25; }
+  } else {
+    tx = (ball.x + own.x * 2) / 3; ty = (ball.y + own.y) / 2;
+    if (Math.hypot(ball.x - own.x, ball.y - own.y) < 420 && dBall < 300) { tx = ball.x; ty = ball.y; }
+  }
+  // grab a nearby big pad when low on boost
+  if (c.boost < 15) {
+    let best = null, bd = 380;
+    pads.forEach(p => { const d = Math.hypot(p.x - c.x, p.y - c.y); if (p.t <= 0 && d < bd) { bd = d; best = p; } });
+    if (best) { tx = best.x; ty = best.y; }
+  }
+  const diff = angDiff(c.a, Math.atan2(ty - c.y, tx - c.x)), dist = Math.hypot(tx - c.x, ty - c.y);
+  return { steer: clamp(diff * 3, -1, 1), thr: Math.abs(diff) > 2.4 && dist < 250 ? -1 : 1, boost: Math.abs(diff) < .25 && dist > 260 && c.boost > 20, drift: Math.abs(diff) > 1.3 && dist > 200 };
+}
+function playerInput() {
+  const k = keys;
+  return {
+    thr: (k.KeyW || k.ArrowUp ? 1 : 0) - (k.KeyS || k.ArrowDown ? 1 : 0),
+    steer: (k.KeyD || k.ArrowRight ? 1 : 0) - (k.KeyA || k.ArrowLeft ? 1 : 0),
+    boost: !!k.Space, drift: !!(k.ShiftLeft || k.ShiftRight)
+  };
+}
+
+// ---- Game loop ----
+const banner = $('banner');
+function updateScore() { $('s0').textContent = score[0]; $('s1').textContent = score[1]; }
+function say(t, c) { banner.textContent = t; banner.style.color = c || '#fff'; }
+function step(dt) {
+  cars.forEach(c => driveCar(c, state === 'count' || state === 'end' ? { thr: 0, steer: 0 } : c.human ? playerInput() : aiInput(c), dt));
+  for (let i = 0; i < cars.length; i++) for (let j = i + 1; j < cars.length; j++) collide(cars[i], cars[j], .4);
+  updateBall(dt);
+  cars.forEach(c => collide(c, ball, .75));
+  pads.forEach(p => {
+    if (p.t > 0) { p.t -= dt; return; }
+    cars.forEach(c => { if (p.t <= 0 && Math.hypot(p.x - c.x, p.y - c.y) < (p.big ? 44 : 32) && c.boost < 100) { c.boost = Math.min(100, c.boost + (p.big ? 100 : 12)); p.t = p.big ? 10 : 4; } });
+  });
+}
+let last = performance.now();
+function loop(now) {
+  const dt = Math.min(.033, (now - last) / 1000); last = now;
+  if (state !== 'menu') {
+    step(dt / 2); step(dt / 2);
+    parts.forEach(p => { p.x += p.vx * dt; p.y += p.vy * dt; p.l -= dt; }); parts = parts.filter(p => p.l > 0);
+    if (state === 'count') {
+      stateT -= dt; say(Math.ceil(stateT) || 'GO!'); if (stateT <= 0) { state = 'play'; say(''); }
+    } else if (state === 'play') {
+      if (!overtime) timeLeft -= dt;
+      if (timeLeft <= 0 && !overtime) { if (score[0] === score[1]) { overtime = true; say('OVERTIME!'); setTimeout(() => state === 'play' && say(''), 1500); } else endMatch(); }
+      if (ball.x + ball.r < 0) goal(1); else if (ball.x - ball.r > W) goal(0);
+    } else if (state === 'goal') {
+      stateT -= dt; if (stateT <= 0) { if (overtime) endMatch(); else kickoff(); }
+    } else if (state === 'end') {
+      stateT -= dt;
+    }
+    const m = Math.max(0, Math.ceil(timeLeft));
+    $('time').textContent = overtime ? 'OT' : Math.floor(m / 60) + ':' + String(m % 60).padStart(2, '0');
+    const pl = cars[0]; if (pl) { $('boost').firstChild.style.width = pl.boost + '%'; $('bval').textContent = Math.round(pl.boost); }
+    draw();
+  }
+  requestAnimationFrame(loop);
+}
+function goal(team) {
+  score[team]++; updateScore(); state = 'goal'; stateT = 2.5;
+  say('GOAL!', TEAM[team]); burst(ball.x < 0 ? 0 : W, ball.y, TEAM[team], 60);
+}
+function endMatch() {
+  state = 'end'; stateT = 4; const w = score[0] > score[1] ? 0 : 1;
+  say(w === 0 ? 'YOU WIN!' : 'DEFEAT', TEAM[w]);
+  setTimeout(() => { if (state === 'end') { state = 'menu'; $('wrap').classList.add('hidden'); $('menu').classList.remove('hidden'); say(''); } }, 4000);
+}
+
+// ---- Rendering ----
+function draw() {
+  g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, cv.width, cv.height);
+  g.translate(GD, 0);
+  // turf stripes
+  for (let i = 0; i < 12; i++) { g.fillStyle = i % 2 ? '#0f3a33' : '#124439'; g.fillRect(i * W / 12, 0, W / 12 + 1, H); }
+  // goals
+  [0, 1].forEach(t => {
+    const x = t ? W : -GD; g.fillStyle = TEAM[t] + '55'; g.fillRect(x, H / 2 - GH / 2, GD, GH);
+    g.strokeStyle = TEAM[t] + '88'; g.lineWidth = 1;
+    for (let i = 0; i <= GD; i += 14) { g.beginPath(); g.moveTo(x + i, H / 2 - GH / 2); g.lineTo(x + i, H / 2 + GH / 2); g.stroke(); }
+    for (let i = 0; i <= GH; i += 14) { g.beginPath(); g.moveTo(x, H / 2 - GH / 2 + i); g.lineTo(x + GD, H / 2 - GH / 2 + i); g.stroke(); }
+  });
+  // lines
+  g.strokeStyle = '#ffffff55'; g.lineWidth = 3;
+  g.beginPath(); g.moveTo(W / 2, 0); g.lineTo(W / 2, H); g.stroke();
+  g.beginPath(); g.arc(W / 2, H / 2, 110, 0, 6.28); g.stroke();
+  g.strokeRect(0, H / 2 - GH / 2 - 40, 150, GH + 80); g.strokeRect(W - 150, H / 2 - GH / 2 - 40, 150, GH + 80);
+  // walls (gaps at goals)
+  g.strokeStyle = '#9fc2ff'; g.lineWidth = 6; g.lineCap = 'round';
+  const gt = H / 2 - GH / 2, gb = H / 2 + GH / 2;
+  g.beginPath(); g.moveTo(0, gt); g.lineTo(0, 0); g.lineTo(W, 0); g.lineTo(W, gt);
+  g.moveTo(W, gb); g.lineTo(W, H); g.lineTo(0, H); g.lineTo(0, gb); g.stroke();
+  // pads
+  pads.forEach(p => {
+    const R = p.big ? 24 : 15, on = p.t <= 0;
+    g.globalAlpha = on ? 1 : .25; g.fillStyle = p.big ? '#ffb347' : '#ffd98a';
+    g.shadowColor = '#ff9a1f'; g.shadowBlur = on ? 18 : 0;
+    g.beginPath(); g.arc(p.x, p.y, R, 0, 6.28); g.fill();
+    g.shadowBlur = 0; g.fillStyle = '#7a3d00'; g.beginPath(); g.arc(p.x, p.y, R * .55, 0, 6.28); g.fill(); g.globalAlpha = 1;
+  });
+  // particles
+  parts.forEach(p => { g.globalAlpha = Math.max(0, p.l * 2); g.fillStyle = p.c; g.beginPath(); g.arc(p.x, p.y, 4, 0, 6.28); g.fill(); }); g.globalAlpha = 1;
+  // cars
+  cars.forEach(c => {
+    g.save(); g.translate(c.x, c.y);
+    g.strokeStyle = TEAM[c.team]; g.lineWidth = 4; g.globalAlpha = .9; g.beginPath(); g.arc(0, 0, 31, 0, 6.28); g.stroke(); g.globalAlpha = 1;
+    g.rotate(c.a);
+    g.fillStyle = c.color; g.beginPath(); g.roundRect(-26, -14, 52, 28, 8); g.fill();
+    g.fillStyle = '#0b1220cc'; g.beginPath(); g.roundRect(-4, -10, 16, 20, 4); g.fill();
+    g.fillStyle = '#fff'; g.fillRect(22, -11, 4, 6); g.fillRect(22, 5, 4, 6);
+    g.restore();
+    if (c.human) { g.fillStyle = '#fff'; g.beginPath(); g.moveTo(c.x, c.y - 44); g.lineTo(c.x - 8, c.y - 56); g.lineTo(c.x + 8, c.y - 56); g.fill(); }
+  });
+  // ball
+  g.save(); g.translate(ball.x, ball.y); g.rotate(ball.rot);
+  g.shadowColor = '#fff'; g.shadowBlur = 14; g.fillStyle = '#f4f7ff'; g.beginPath(); g.arc(0, 0, ball.r, 0, 6.28); g.fill(); g.shadowBlur = 0;
+  g.fillStyle = '#1b2535'; for (let i = 0; i < 3; i++) { g.rotate(2.09); g.beginPath(); g.arc(ball.r * .55, 0, ball.r * .22, 0, 6.28); g.fill(); }
+  g.restore();
+}
+requestAnimationFrame(loop);
